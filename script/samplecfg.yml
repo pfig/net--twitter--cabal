@@ -1,0 +1,12 @@
+name: Cabal Test
+description: A Lovely Cabal
+jid: cabal-test@jabber.org
+password: oooooook
+twitter: cabal_test
+twitterpw: fooooooo
+accept:
+    me@pedrofigueiredo.org: pfig
+    melo@simplicidade.org: melo
+    pfigueiredo@gmail.com: pfigz
+    ajid@jabber.org: foo
+    another@livejournal.com: bar

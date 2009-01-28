@@ -1,0 +1,247 @@
+package Net::Twitter::Cabal;
+
+use strict;
+use warnings;
+
+use base 'Class::Accessor::Fast';
+__PACKAGE__->mk_accessors( qw/
+	config
+	/
+);
+
+use Carp;
+
+use Encode;
+binmode STDOUT, ":utf8";
+
+use Log::Log4perl ':easy';
+Log::Log4perl->easy_init( $DEBUG );
+
+use AnyEvent::XMPP::Client;
+use AnyEvent::XMPP::Ext::Disco;
+use AnyEvent::XMPP::Ext::Version;
+use AnyEvent::XMPP::Namespaces qw/xmpp_ns/;
+use AnyEvent;
+
+use Net::Twitter;
+use Net::Twitter::Cabal::Config;
+use Net::Twitter::Cabal::Tweet;
+
+=head1 NAME
+
+Net::Twitter::Cabal - Manage posters to a Twitter stream
+
+You have a Twitter stream than can be updated by several people. Dealing with
+authorisation is painful, and there's no way to identify a poster.
+
+Net::Twitter::Cabal let's you manage this stream from a central point, where
+you have full control of who can post and without the need to distribute the
+account's credentials.
+
+=head1 VERSION
+
+Version 0.01
+
+=cut
+
+our $VERSION = '0.01';
+
+
+=head1 SYNOPSIS
+
+Using Net::Twitter::Cabal you can create centralised endpoints for a group
+of people to post to a single Twitter stream:
+
+    use Net::Twitter::Cabal;
+
+    my $conspiracy = Net::Twitter::Cabal->new( {
+		'config' => 'config.yml',
+	} );
+	
+	$conspiracy->run;
+
+=head1 FUNCTIONS
+
+=head2 new
+
+Create a new cabal and initialise the configuration.
+
+	my $conspiracy = Net::Twitter::Cabal->new( {
+		'config' => 'config.yml';
+	} );
+
+=cut
+
+sub new {
+	my $proto = shift;
+	my $class = ref $proto || $proto;
+	
+	my $self = $class->SUPER::new;
+	
+	my $args  = shift;
+	
+	my $cfgfile = defined $args->{'config'}? $args->{'config'} : undef;
+	my $config  = Net::Twitter::Cabal::Config->new( { file => $cfgfile } );
+	
+	$self->config( $config );
+	
+	return $self;
+}
+
+=head2 run
+
+Start the Cabal:
+
+	$conspiracy->run;
+	
+=cut
+
+sub run {
+	my $self = shift;
+	
+	my $j       = AnyEvent->condvar;
+	my $c       = AnyEvent::XMPP::Client->new( debug => 1 );
+	my $c_args  = { 'initial_presence' => -5 };
+	my $disco   = AnyEvent::XMPP::Ext::Disco->new;
+	my $version = AnyEvent::XMPP::Ext::Version->new;
+	$c->add_extension( $disco );
+	$c->add_extension( $version );
+
+	my $jid = $self->config->jid;
+	my $pwd = $self->config->password;
+	
+	$c->add_account( $jid, $pwd, undef, undef, $c_args );
+	
+	$c->reg_cb(
+		session_ready =>sub {
+			my ( $cl, $acc ) = @_;
+			INFO $acc->jid . " connected.";
+			$cl->set_presence(
+				'online',
+				"Accepting tweets for " . $self->config->name,
+				-5
+			);
+		},
+		error => sub {
+			my ( $cl, $acc, $err ) = @_;
+			ERROR $err->string;
+			$j->broadcast;
+		},
+		disconnect => sub {
+			WARN "Disconnected: [@_]";
+			$j->broadcast;
+		},
+		message => sub { $self->_got_message( @_ ); },
+		contact_request_subscribe => sub { $self->_got_subs_req( @_ ); },
+		contact_subscribed => sub {
+			my ( $cl, $acc, $roster, $contact ) = @_;
+			$cl->send_message( AnyEvent::XMPP::IM::Message->new(
+				to   => $contact->jid,
+				body => "Hi There! Ready to post your tweets to " .
+						$self->config->name . "."
+			) );
+		},
+		contact_did_unsubscribe => sub {
+			my ( $cl, $acc, $roster, $contact ) = @_;
+			my $jid = $contact->jid;
+			INFO "$jid unsubscribed from us";
+		},
+		contact_unsubscribed => sub {
+			my ( $cl, $acc, $roster, $contact ) = @_;
+			my $jid = $contact->jid;
+			WARN "$jid unsubscribed us";
+		},
+	);
+	
+	$c->start;
+	$j->wait;
+}
+
+sub _got_message {
+	my ( $self, $cl, $acc, $msg ) = @_;
+	my $jid;
+	( $jid = $msg->from ) =~ s|/.*$||;
+	my $nick = $self->config->accept->{$jid};
+	INFO "Got a message from " . $nick . ": " . $msg->any_body;
+}
+
+sub _got_subs_req {
+	my ( $self, $cl, $acc, $roster, $contact ) = @_;
+	
+	my $jid = $contact->jid;
+	INFO "Subscription request from $jid";
+	if ( exists $self->config->accept->{$jid} ) {
+		$contact->send_subscribed;
+		$contact->send_subscribe;
+		INFO "Subscribed to $jid";
+	} else {
+		$contact->send_unsubscribed;
+		INFO "Refused subscription from $jid";
+	}
+	0;
+}
+
+=head1 AUTHOR
+
+Pedro Figueiredo, C<< <me at pedrofigueiredo.org> >>
+
+=head1 BUGS
+
+Please report any bugs or feature requests to C<bug-net-twitter-cabal at rt.cpan.org>, or through
+the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Net-Twitter-Cabal>.  I will be notified, and then you'll
+automatically be notified of progress on your bug as I make changes.
+
+
+
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Net::Twitter::Cabal
+
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Net-Twitter-Cabal>
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Net-Twitter-Cabal>
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Net-Twitter-Cabal>
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Net-Twitter-Cabal/>
+
+=back
+
+
+=head1 ACKNOWLEDGEMENTS
+
+=over 4
+
+=item * Pedro Melo, for suggestions, testing, and holding my hand wrt XMPP
+
+=item * Robin Redeker, author of AnyEvent::XMPP, for listening to my whining
+
+=back
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright 2009 Pedro Figueiredo, all rights reserved.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+
+=cut
+
+45; # End of Net::Twitter::Cabal
