@@ -32,3 +32,6 @@
 # No tarballs!
 \.gz$
 
+# No scm stuff
+^\.cvsignore$
+^\.gitignore$
