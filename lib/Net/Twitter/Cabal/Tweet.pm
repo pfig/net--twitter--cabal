@@ -1,20 +1,27 @@
 package Net::Twitter::Cabal::Tweet;
+#use Moose;
+
+#has 'id'       => ( is => 'ro', isa => 'Int' );
+#has 'content'  => ( is => 'rw', isa => 'Str', required => 1 );
+#has 'poster'   => ( is => 'ro', isa => 'Str', required => 1 );
+#has 'datetime' => ( is => 'ro', isa => 'DateTime' );
+#has 'length'   => ( is => 'rw', isa => 'Int' );
 
 use strict;
 use warnings;
 
-use base qw/ Class::Accessor::Fast /;
+use base 'Class::Accessor::Fast';
 __PACKAGE__->mk_accessors( qw/
-	id
 	content
 	poster
-	datetime
 	/
 );
+# id and datetime left for a future release (w/ store and forward)
+# length left for a future release (w/ tweet splitting)
 
 use Carp;
 
-use DateTime;
+#use DateTime;
 
 =head1 NAME
 
@@ -34,11 +41,9 @@ our $VERSION = '0.01';
 Inside a cabal-controlling program:
 
 	my $tweet = Net::Twitter::Cabal::Tweet->new( {
-		'poster'  => $nick,
-		'content' => "I'm inhaling",
+		poster  => $nick,
+		content => "I'm inhaling",
 	} );
-	# time passes
-	my $result = $tweet->post;
 
 This should only be used internally.
 
@@ -46,7 +51,10 @@ This should only be used internally.
 
 =head2 new
 
-	my $tweet = Net::Twitter::Cabal::Tweet->new;
+	my $tweet = Net::Twitter::Cabal::Tweet->new( {
+		poster  => $nick,
+		content => $text,
+	} );
 
 =cut
 
@@ -54,12 +62,8 @@ sub new {
 	my $proto = shift;
 	my $class = ref $proto || $proto;
 	
-	my $self = $class->SUPER::new( @_ );
-	
-	carp "no poster defined" unless $self->poster;
-	carp "no content" unless $self->content;
-	
-	$self->datetime( DateTime->now );
+	my $self  = $class->SUPER::new( @_ );
+	croak unless ( $self->poster && $self->content );
 	
 	return $self;
 }

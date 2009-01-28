@@ -20,7 +20,7 @@ Log::Log4perl->easy_init( $DEBUG );
 use AnyEvent::XMPP::Client;
 use AnyEvent::XMPP::Ext::Disco;
 use AnyEvent::XMPP::Ext::Version;
-use AnyEvent::XMPP::Namespaces qw/xmpp_ns/;
+use AnyEvent::XMPP::Namespaces 'xmpp_ns';
 use AnyEvent;
 
 use Net::Twitter;
@@ -100,8 +100,8 @@ sub run {
 	my $self = shift;
 	
 	my $j       = AnyEvent->condvar;
-	my $c       = AnyEvent::XMPP::Client->new( debug => 1 );
-	my $c_args  = { 'initial_presence' => -5 };
+	my $c       = AnyEvent::XMPP::Client->new;
+	my $c_args  = { 'initial_presence' => 5 };
 	my $disco   = AnyEvent::XMPP::Ext::Disco->new;
 	my $version = AnyEvent::XMPP::Ext::Version->new;
 	$c->add_extension( $disco );
@@ -109,6 +109,12 @@ sub run {
 
 	my $jid = $self->config->jid;
 	my $pwd = $self->config->password;
+
+	my $twitter = Net::Twitter->new(
+		source   => 'Cabal',
+		username => $self->config->twitter,
+		password => $self->config->twitterpw,
+	);
 	
 	$c->add_account( $jid, $pwd, undef, undef, $c_args );
 	
@@ -117,9 +123,11 @@ sub run {
 			my ( $cl, $acc ) = @_;
 			INFO $acc->jid . " connected.";
 			$cl->set_presence(
-				'online',
+				$self->config->description
+					? $self->config->description
+					: $self->config->name,
 				"Accepting tweets for " . $self->config->name,
-				-5
+				5
 			);
 		},
 		error => sub {
@@ -131,7 +139,7 @@ sub run {
 			WARN "Disconnected: [@_]";
 			$j->broadcast;
 		},
-		message => sub { $self->_got_message( @_ ); },
+		message => sub { $self->_got_message( @_, $twitter->clone ); },
 		contact_request_subscribe => sub { $self->_got_subs_req( @_ ); },
 		contact_subscribed => sub {
 			my ( $cl, $acc, $roster, $contact ) = @_;
@@ -158,11 +166,24 @@ sub run {
 }
 
 sub _got_message {
-	my ( $self, $cl, $acc, $msg ) = @_;
+	my ( $self, $cl, $acc, $msg, $twitter ) = @_;
 	my $jid;
 	( $jid = $msg->from ) =~ s|/.*$||;
 	my $nick = $self->config->accept->{$jid};
-	INFO "Got a message from " . $nick . ": " . $msg->any_body;
+	my $text = $msg->any_body;
+	INFO "[$nick]: " . $text;
+	my $tweet = Net::Twitter::Cabal::Tweet->new( {
+		poster  => $nick,
+		content => "[$nick]: $text",
+	} );
+	my $res = $twitter->update( $tweet->content );
+	if ( ! defined $res ) {
+		$cl->send_message( AnyEvent::XMPP::IM::Message->new(
+			to   => $msg->from,
+			body => "Urgh. Your message '$text' wasn't posted."
+		) );
+	}
+	0;
 }
 
 sub _got_subs_req {
@@ -231,6 +252,8 @@ L<http://search.cpan.org/dist/Net-Twitter-Cabal/>
 =item * Pedro Melo, for suggestions, testing, and holding my hand wrt XMPP
 
 =item * Robin Redeker, author of AnyEvent::XMPP, for listening to my whining
+
+=item * Nuno Nunes, for testing
 
 =back
 
