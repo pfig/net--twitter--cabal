@@ -6,7 +6,7 @@ author   'Pedro Figueiredo <me@pedrofigueiredo.org>';
 license  'perl';
 
 build_requires 'Test::More';
-build_requires 'Test::MockObject';
+#build_requires 'Test::MockObject';
 
 requires 'Class::Accessor::Fast';
 requires 'Config::Any';
