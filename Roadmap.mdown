@@ -7,7 +7,6 @@
      + Cabal gets a subscribe request from an unknown peer, sends a message
        to the admin users, who reply with ok/nok; first one wins (melo)
    * Web interface
-6.  Multiple cabals per process (+)
+6.  Multiple cabals per process
 7.  Plugins for other transports (IRC, etc)
 
-(+) This is already allowed on the configuration
