@@ -14,7 +14,7 @@ requires 'DateTime';
 requires 'Log::Log4perl';
 
 requires 'AnyEvent::XMPP';
-requires 'Net::Twitter';
+requires 'Net::Twitter' => '2.0';
 
 auto_install;
 
