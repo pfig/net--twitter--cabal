@@ -111,7 +111,7 @@ sub run {
 	my $pwd = $self->config->password;
 
 	my $twitter = Net::Twitter->new(
-		source   => 'Cabal',
+		source   => 'cabal',
 		username => $self->config->twitter,
 		password => $self->config->twitterpw,
 	);
