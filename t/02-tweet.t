@@ -17,4 +17,4 @@ my $tweet = Net::Twitter::Cabal::Tweet->new( {
 
 isa_ok( $tweet, 'Net::Twitter::Cabal::Tweet' );
 is( $tweet->poster, $nick, 'poster accessor' );
-is( $tweet->content, $nick, 'content accessor' );
+is( $tweet->content, $text, 'content accessor' );

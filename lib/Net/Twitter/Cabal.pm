@@ -18,6 +18,7 @@ use Log::Log4perl ':easy';
 Log::Log4perl->easy_init( $DEBUG );
 
 use AnyEvent::XMPP::Client;
+use AnyEvent::XMPP::Util qw / split_jid /;
 use AnyEvent::XMPP::Ext::Disco;
 use AnyEvent::XMPP::Ext::Version;
 use AnyEvent::XMPP::Ext::VCard;
@@ -147,6 +148,8 @@ sub run {
 				"Accepting tweets for " . $self->config->name,
 				5
 			);
+			
+			$self->_update_roster( $acc );
 		},
 				
 		error => sub {
@@ -185,6 +188,8 @@ sub run {
 			my $jid = $contact->jid;
 			WARN "$jid unsubscribed us";
 		},
+		
+		roster_update => sub { $j->broadcast; },
 	);
 	
 	$c->start;
@@ -193,15 +198,16 @@ sub run {
 
 sub _got_message {
 	my ( $self, $cl, $acc, $msg, $twitter ) = @_;
-	my $jid;
 	
-	( $jid = $msg->from ) =~ s|/.*$||;
+	my ( $user, $domain, $resource ) = split_jid( $msg->from );
+	my $jid = $user . '@' . $domain;
 	my $nick = $self->config->accept->{$jid};
 	if ( ! defined $nick ) {
 		$cl->send_message( AnyEvent::XMPP::IM::Message->new(
 			to   => $msg->from,
-			body => "Sorry, you're not on the list.";
+			body => "Sorry, you're not on the list.",
 		) );
+		$self->_unsubscribe_from( $acc, $jid );
 		return;
 	}
 	
@@ -243,6 +249,33 @@ sub _got_subs_req {
 	}
 	
 	0;
+}
+
+sub _unsubscribe_from {
+	my ( $self, $acc, $from ) = @_;
+	
+	my $roster  = $acc->connection->roster;
+	my $contact = $roster->get_contact( $from );
+	
+	if ( $contact ) {
+		$contact->send_unsubscribed;
+		$contact->send_unsubscribe;
+	}
+	
+	INFO "Unsubscribed '$from', which isn't in my accept list.";
+}
+
+sub _update_roster {
+	my ( $self, $acc ) = @_;
+	
+	my $roster = $acc->connection->roster;
+	for my $contact ( $roster->get_contacts ) {
+		my ( $user, $domain, $resource ) = split_jid( $contact->jid );
+		my $jid = $user . '@' . $domain;
+		if ( ! exists $self->config->accept->{$jid} ) {
+			$self->_unsubscribe_from( $acc, $jid );
+		}
+	}
 }
 
 sub _vcard {

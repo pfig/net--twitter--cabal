@@ -372,7 +372,7 @@ _AVATAR_
 		$type =~ s/jpg$/jpeg/;
 	}
 	
-	return { image => $avatar, type => $type };
+	return { image => $avatar, type => $type, file => $file };
 }
 
 =head1 AUTHOR
