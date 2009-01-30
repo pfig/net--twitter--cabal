@@ -197,6 +197,14 @@ sub _got_message {
 	
 	( $jid = $msg->from ) =~ s|/.*$||;
 	my $nick = $self->config->accept->{$jid};
+	if ( ! defined $nick ) {
+		$cl->send_message( AnyEvent::XMPP::IM::Message->new(
+			to   => $msg->from,
+			body => "Sorry, you're not on the list.";
+		) );
+		return;
+	}
+	
 	my $text = $msg->any_body;
 	INFO "[$nick]: " . $text;
 	
