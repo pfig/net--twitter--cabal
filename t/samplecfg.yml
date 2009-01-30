@@ -7,3 +7,6 @@ twitterpw: fooooooo
 accept:
     ajid@jabber.org: foo
     another@livejournal.com: bar
+avatar: animage.png
+url: http://example.com/mycabal
+

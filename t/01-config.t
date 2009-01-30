@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::More tests => 12;
+use Test::More tests => 14;
 
 BEGIN {
 	use_ok( 'Net::Twitter::Cabal::Config' );
@@ -24,3 +24,6 @@ ok( exists $config->accept->{'ajid@jabber.org'}, 'accept exists' );
 is( $config->accept->{'ajid@jabber.org'}, 'foo', '..nickname' );
 ok( exists $config->accept->{'another@livejournal.com'}, 'accept exists' );
 is( $config->accept->{'another@livejournal.com'}, 'bar', '..nickname' );
+
+is( $config->avatar, 'animage.png', 'avatar file' );
+is( $config->url, 'http://example.com/mycabal', 'url' );

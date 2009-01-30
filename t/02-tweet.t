@@ -1,6 +1,6 @@
 #!perl -T
 
-use Test::More tests => 2;
+use Test::More tests => 4;
 
 BEGIN {
 	use_ok( 'Net::Twitter::Cabal::Tweet' );
@@ -16,3 +16,5 @@ my $tweet = Net::Twitter::Cabal::Tweet->new( {
 } );
 
 isa_ok( $tweet, 'Net::Twitter::Cabal::Tweet' );
+is( $tweet->poster, $nick, 'poster accessor' );
+is( $tweet->content, $nick, 'content accessor' );
