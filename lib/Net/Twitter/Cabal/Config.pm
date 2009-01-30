@@ -20,7 +20,6 @@ use Config::Any;
 use Carp;
 
 use MIME::Base64;
-use Digest::SHA1 qw/ sha1_hex /;
 
 =head1 NAME
 
@@ -363,6 +362,7 @@ MX2BTzv19PNawEzcAu4nuGGFYhvX2d7JVaUiZ8AOx7MGwH7EbD5hnmQ/tlNh2LbISfrFPwxRIfya
 ZfEMCeP/B42fW797tAQ+AAAAAElFTkSuQmCC
 _AVATAR_
 
+	$avatar = decode_base64( $avatar );
 	if ( open( my $fh, '<', $file ) ) {
 		local $/;
 		binmode $fh;

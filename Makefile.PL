@@ -11,6 +11,8 @@ build_requires 'Test::More';
 requires 'Class::Accessor::Fast';
 requires 'Log::Log4perl';
 
+requires 'MIME::Base64';
+
 #requires 'DateTime';
 requires 'Config::Any';
 requires 'AnyEvent::XMPP' => '0.3';
