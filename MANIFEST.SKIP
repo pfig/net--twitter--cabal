@@ -35,3 +35,7 @@
 # No scm stuff
 ^\.cvsignore$
 ^\.gitignore$
+
+# Local test files
+irc\.pl$
+ircconsole\.pl$
